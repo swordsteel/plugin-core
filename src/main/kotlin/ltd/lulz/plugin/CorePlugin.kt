@@ -1,5 +1,6 @@
 package ltd.lulz.plugin
 
+import ltd.lulz.plugin.extension.CoreExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -10,6 +11,9 @@ class CorePlugin : Plugin<Project> {
      * Register Extensions and Tasks.
      */
     override fun apply(project: Project) {
-        // TODO register Extensions and Tasks
+        coreExtension(project)
     }
+
+    private fun coreExtension(project: Project): CoreExtension = project.extensions
+        .create(CoreExtension.PLUGIN_NAME, CoreExtension::class.java, project)
 }
