@@ -10,23 +10,23 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType.SARIF
 
 plugins {
-    id("io.gitlab.arturbosch.detekt") version "1.23.5"
-    id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
+    alias(lulz.plugins.io.gitlab.arturbosch.detekt)
+    alias(lulz.plugins.org.jlleitschuh.gradle.ktlint)
 
-    kotlin("jvm") version "1.9.22"
+    alias(lulz.plugins.kotlin.jvm)
 
     `java-gradle-plugin`
     `maven-publish`
 }
 
 dependencies {
-    implementation("org.eclipse.jgit:org.eclipse.jgit:6.8.0.202311291450-r")
+    implementation(lulz.org.eclipse.jgit)
 
-    testImplementation("io.mockk:mockk:1.13.9")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2")
+    testImplementation(lulz.io.mockk)
+    testImplementation(lulz.org.junit.jupiter.api)
+    testImplementation(lulz.org.junit.jupiter.params)
 
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+    testRuntimeOnly(lulz.org.junit.platform.launcher)
 }
 
 description = "Lulz Ltd Test Plugin Core"

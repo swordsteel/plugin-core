@@ -14,11 +14,11 @@ check_last_commit() {
 }
 
 un_snapshot_version() {
-    sed -i 's/\(version\s*=\s*[0-9.]*\)-SNAPSHOT/\1/' gradle.properties
+    sed -i "s/^\($1\s*=\s*[0-9.]*\)-SNAPSHOT/\1/" gradle.properties
 }
 
 get_current_version() {
-    echo "$(awk -F '=' '/version\s*=\s*[0-9.]*/ {gsub(/^ +| +$/,"",$2); print $2}' gradle.properties)"
+    awk -F '=' '/version\s*=\s*[0-9.]*/ {gsub(/^ +| +$/,"",$2); print $2}' gradle.properties
 }
 
 commit_change() {
@@ -32,16 +32,16 @@ add_tag() {
     git push --porcelain origin "$gitTag"
 }
 
-merge_into_main() {
-    git checkout main
+merge_into_master() {
+    git checkout master
     git merge develop -m "release version '$(get_current_version)'" --ff-only
-    git push --porcelain origin main
+    git push --porcelain origin master
     git checkout develop
-    git rebase origin/main
+    git rebase origin/master
 }
 
 snapshot_version() {
-    new_version=$(echo $(get_current_version) | awk -F '.' '{print $1 "." $2 "." $3+1}')
+    new_version="$(get_current_version | awk -F '.' '{print $1 "." $2 "." $3+1}')"
     sed -i "s/\(version\s*=\s*\)[0-9.]*/\1$new_version-SNAPSHOT/" gradle.properties
 }
 
@@ -52,7 +52,8 @@ setup
 check_last_commit
 
 # unSnapshotVersion
-un_snapshot_version
+un_snapshot_version catalog
+un_snapshot_version version
 
 # commitVersionChange
 commit_change "release version: $(get_current_version)"
@@ -61,7 +62,7 @@ commit_change "release version: $(get_current_version)"
 add_tag
 
 # something
-merge_into_main
+merge_into_master
 
 # preTagCommit
 snapshot_version
