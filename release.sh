@@ -1,71 +1,107 @@
 #!/bin/sh
 
-setup() {
-    git fetch
-    git checkout develop
+# This is a local release script and should be replaced with a pipeline thing.
+
+checkActiveBranch() {
+  if [ "$(git rev-parse --abbrev-ref HEAD)" != "$1" ]; then
+    echo "Error: The current branch is not $1."
+    exit 1
+  fi
 }
 
-check_last_commit() {
-    last_commit_message=$(git log -1 --pretty=format:%s)
-    if [ "$last_commit_message" = "[RELEASE] - bump version" ]; then
-        echo "Nothing to release!!!"
-        exit 1
+checkUncommittedChanges() {
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "Error: There are uncommitted changes in the repository."
+    exit 1
+  fi
+}
+
+prepareEnvironment() {
+    git fetch origin
+}
+
+checkLastCommit() {
+  last_commit_message=$(git log -1 --pretty=format:%s)
+  if [ "$last_commit_message" = "[RELEASE] - bump version" ]; then
+    echo "Warning: Nothing to release!!!"
+    exit 1
+  fi
+}
+
+checkDifferences() {
+  if ! git diff --quiet origin/"$1" "$1"; then
+    echo "Error: The branches origin/$1 and $1 have differences."
+    exit 1
+  fi
+}
+
+unSnapshotVersion() {
+  sed -i "s/\($1\s*=\s*[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/" gradle.properties
+}
+
+stageFiles() {
+  for file in "$@"; do
+    if git diff --exit-code --quiet -- "$file"; then
+      echo "No changes in $file"
+    else
+      git add "$file"
+      echo "Changes in $file staged for commit"
     fi
+  done
 }
 
-un_snapshot_version() {
-    sed -i "s/^\($1\s*=\s*[0-9.]*\)-SNAPSHOT/\1/" gradle.properties
+commitChange() {
+  stageFiles gradle.properties
+  git commit -m "[RELEASE] - $1"
+  git push --porcelain origin develop
 }
 
-get_current_version() {
-    awk -F '=' '/version\s*=\s*[0-9.]*/ {gsub(/^ +| +$/,"",$2); print $2}' gradle.properties
+currentVersion() {
+  awk -F '=' '/version\s*=\s*[0-9.]*/ {gsub(/^ +| +$/,"",$2); print $2}' gradle.properties
 }
 
-commit_change() {
-    git commit -m "[RELEASE] - $1" gradle.properties
-    git push --porcelain origin develop
+addReleaseTag() {
+  gitTag="v$(currentVersion)"
+  git tag -a "$gitTag" -m "Release version $gitTag"
+  git push --porcelain origin "$gitTag"
 }
 
-add_tag() {
-    gitTag="v$(get_current_version)"
-    git tag -a "$gitTag" -m "release"
-    git push --porcelain origin "$gitTag"
+mergeIntoMaster() {
+  git checkout master
+  git merge develop -m "release version '$(currentVersion)'" --ff-only
+  git push --porcelain origin master
+  git checkout develop
+  git rebase origin/master
 }
 
-merge_into_master() {
-    git checkout master
-    git merge develop -m "release version '$(get_current_version)'" --ff-only
-    git push --porcelain origin master
-    git checkout develop
-    git rebase origin/master
+snapshotVersion() {
+  new_version="$(currentVersion | awk -F '.' '{print $1 "." $2 "." $3+1}')"
+  sed -i "s/\(version\s*=\s*\)[0-9.]*/\1$new_version-SNAPSHOT/" gradle.properties
 }
 
-snapshot_version() {
-    new_version="$(get_current_version | awk -F '.' '{print $1 "." $2 "." $3+1}')"
-    sed -i "s/\(version\s*=\s*\)[0-9.]*/\1$new_version-SNAPSHOT/" gradle.properties
+publishMaster() {
+  git checkout master
+  ./gradlew clean build publish
 }
 
-# gitCmd4Azure
-setup
+# check and prepare for release
+checkActiveBranch develop
+checkUncommittedChanges
+prepareEnvironment
+checkLastCommit
+checkDifferences master
+checkDifferences develop
 
-# checkLastCommit
-check_last_commit
+# un-snapshot version for release
+unSnapshotVersion catalog
+unSnapshotVersion version
 
-# unSnapshotVersion
-un_snapshot_version catalog
-un_snapshot_version version
+# release changes and prepare for next release
+commitChange "release version: $(currentVersion)"
+addReleaseTag
+mergeIntoMaster
+snapshotVersion
+commitChange 'bump version'
 
-# commitVersionChange
-commit_change "release version: $(get_current_version)"
-
-# preTagCommit
-add_tag
-
-# something
-merge_into_master
-
-# preTagCommit
-snapshot_version
-
-# commitVersionChange
-commit_change 'bump version'
+# disable
+#publishMaster

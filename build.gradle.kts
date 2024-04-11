@@ -1,6 +1,7 @@
 import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension.Companion.DEFAULT_SRC_DIR_KOTLIN
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension.Companion.DEFAULT_TEST_SRC_DIR_KOTLIN
+import java.lang.System.getenv
 import java.time.OffsetDateTime.now
 import java.time.ZoneId.of
 import java.time.format.DateTimeFormatter.ofPattern
@@ -72,15 +73,24 @@ ktlint {
 
 publishing {
     repositories {
+
+        fun retrieveConfiguration(
+            property: String,
+            environment: String,
+        ): String? = project.findProperty(property)?.toString() ?: getenv(environment)
+
         // TODO configuration for publishing packages
         // maven {
+        //     name = "LuLz-Ltd"
         //     url = uri("https://")
-        //     credentials {
-        //         username =
-        //         password =
+        //     credentials(HttpHeaderCredentials::class) {
+        //         username = retrieveConfiguration("repositoryUser", "REPOSITORY_USER")
+        //         password = retrieveConfiguration("repositoryToken", "REPOSITORY_TOKEN")
+        //     }
+        //     authentication {
+        //         create("header", HttpHeaderAuthentication::class)
         //     }
         // }
-        publications.register("mavenJava", MavenPublication::class) { from(components["java"]) }
     }
 }
 
